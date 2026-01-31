@@ -783,6 +783,90 @@
             margin-top: 8px;
             flex-shrink: 0;
         }
+
+        /* Live LaTeX Preview */
+        .latex-preview {
+            background: #f8f9fa;
+            border-top: 1px dashed #ddd;
+            padding: 10px 12px;
+            min-height: 30px;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .latex-preview:empty::before {
+            content: 'LaTeX preview will appear here...';
+            color: #999;
+            font-style: italic;
+        }
+
+        .latex-preview .katex {
+            font-size: 1.1em;
+        }
+
+        .latex-preview .katex-display {
+            margin: 0.5em 0;
+        }
+
+        .choice-wysiwyg-item .latex-preview {
+            padding: 6px 8px;
+            min-height: 24px;
+            font-size: 0.85rem;
+        }
+
+        /* LaTeX button dropdown */
+        .latex-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .latex-dropdown-content {
+            display: none;
+            position: absolute;
+            background: white;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 6px;
+            z-index: 100;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+        }
+
+        .latex-dropdown-content.show {
+            display: block;
+        }
+
+        .latex-dropdown-content button {
+            width: 100%;
+            text-align: left;
+            padding: 8px 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-radius: 0;
+        }
+
+        .latex-dropdown-content button:first-child {
+            border-radius: 6px 6px 0 0;
+        }
+
+        .latex-dropdown-content button:last-child {
+            border-radius: 0 0 6px 6px;
+        }
+
+        .latex-dropdown-content button:hover {
+            background: #e8f7fa;
+        }
+
+        .latex-dropdown-content button code {
+            background: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -1049,6 +1133,13 @@
             });
 
             initDragAndDrop();
+
+            // Initialize live LaTeX previews for all editors
+            setTimeout(() => {
+                document.querySelectorAll('.wysiwyg-editor').forEach(editor => {
+                    initializeLivePreview(editor);
+                });
+            }, 100);
         }
 
         function createProblemCard(problem, index) {
@@ -1193,6 +1284,7 @@
 
         function createWysiwygEditor(problemIndex, field, content) {
             const editorId = `wysiwyg-${problemIndex}-${field}`;
+            const previewId = `latex-preview-${problemIndex}-${field}`;
             return `
                 <div class="wysiwyg-container">
                     <div class="wysiwyg-toolbar">
@@ -1209,6 +1301,18 @@
                         <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
                         <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
                         <div class="separator"></div>
+                        <div class="latex-dropdown">
+                            <button type="button" onclick="toggleLatexDropdown(this)" title="Insert LaTeX">&#x222B; LaTeX</button>
+                            <div class="latex-dropdown-content">
+                                <button type="button" onclick="insertLatex('inline'); closeLatexDropdown(this)">Inline math <code>$...$</code></button>
+                                <button type="button" onclick="insertLatex('display'); closeLatexDropdown(this)">Display math <code>\\[...\\]</code></button>
+                                <button type="button" onclick="insertLatex('fraction'); closeLatexDropdown(this)">Fraction <code>\\frac{}{}</code></button>
+                                <button type="button" onclick="insertLatex('sqrt'); closeLatexDropdown(this)">Square root <code>\\sqrt{}</code></button>
+                                <button type="button" onclick="insertLatex('sum'); closeLatexDropdown(this)">Sum <code>\\sum_{}</code></button>
+                                <button type="button" onclick="insertLatex('integral'); closeLatexDropdown(this)">Integral <code>\\int_{}</code></button>
+                            </div>
+                        </div>
+                        <div class="separator"></div>
                         <button type="button" onclick="execCmd('removeFormat')" title="Clear Formatting">Clear</button>
                     </div>
                     <div class="wysiwyg-editor"
@@ -1216,14 +1320,17 @@
                          id="${editorId}"
                          data-problem="${problemIndex}"
                          data-field="${field}"
+                         data-preview="${previewId}"
                          onblur="saveWysiwygContent(${problemIndex}, '${field}', this)"
-                         oninput="markWysiwygDirty(this)">${content || ''}</div>
+                         oninput="onWysiwygInput(this)">${content || ''}</div>
+                    <div class="latex-preview" id="${previewId}"></div>
                 </div>
             `;
         }
 
         function createChoiceWysiwygEditor(problemIndex, choiceIndex, content) {
             const editorId = `wysiwyg-${problemIndex}-choice-${choiceIndex}`;
+            const previewId = `latex-preview-${problemIndex}-choice-${choiceIndex}`;
             return `
                 <div class="wysiwyg-container">
                     <div class="wysiwyg-toolbar">
@@ -1234,7 +1341,15 @@
                         <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
                         <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
                         <div class="separator"></div>
-                        <button type="button" onclick="insertCode()" title="Code">&lt;/&gt;</button>
+                        <div class="latex-dropdown">
+                            <button type="button" onclick="toggleLatexDropdown(this)" title="Insert LaTeX">&#x222B;</button>
+                            <div class="latex-dropdown-content">
+                                <button type="button" onclick="insertLatex('inline'); closeLatexDropdown(this)">Inline <code>$...$</code></button>
+                                <button type="button" onclick="insertLatex('display'); closeLatexDropdown(this)">Display <code>\\[...\\]</code></button>
+                                <button type="button" onclick="insertLatex('fraction'); closeLatexDropdown(this)">Fraction</button>
+                                <button type="button" onclick="insertLatex('sum'); closeLatexDropdown(this)">Sum</button>
+                            </div>
+                        </div>
                         <button type="button" onclick="execCmd('removeFormat')" title="Clear">Clear</button>
                     </div>
                     <div class="wysiwyg-editor"
@@ -1242,8 +1357,10 @@
                          id="${editorId}"
                          data-problem="${problemIndex}"
                          data-choice="${choiceIndex}"
+                         data-preview="${previewId}"
                          onblur="saveChoiceWysiwygContent(${problemIndex}, ${choiceIndex}, this)"
-                         oninput="markWysiwygDirty(this)">${content || ''}</div>
+                         oninput="onWysiwygInput(this)">${content || ''}</div>
+                    <div class="latex-preview" id="${previewId}"></div>
                 </div>
             `;
         }
@@ -1255,6 +1372,94 @@
 
         function execCmd(command, value = null) {
             document.execCommand(command, false, value);
+        }
+
+        function onWysiwygInput(editor) {
+            markWysiwygDirty(editor);
+            updateLiveLatexPreview(editor);
+        }
+
+        function updateLiveLatexPreview(editor) {
+            const previewId = editor.dataset.preview;
+            if (!previewId) return;
+
+            const previewEl = document.getElementById(previewId);
+            if (!previewEl) return;
+
+            const content = editor.innerHTML;
+
+            // Check if content contains LaTeX delimiters
+            if (content.includes('$') || content.includes('\\[') || content.includes('\\(') || content.includes('[mathjax]')) {
+                previewEl.innerHTML = content;
+                renderLatex(previewEl);
+            } else {
+                previewEl.innerHTML = '';
+            }
+        }
+
+        function initializeLivePreview(editor) {
+            const content = editor.innerHTML;
+            if (content.includes('$') || content.includes('\\[') || content.includes('\\(') || content.includes('[mathjax]')) {
+                updateLiveLatexPreview(editor);
+            }
+        }
+
+        function toggleLatexDropdown(btn) {
+            const dropdown = btn.nextElementSibling;
+            // Close all other dropdowns first
+            document.querySelectorAll('.latex-dropdown-content.show').forEach(d => {
+                if (d !== dropdown) d.classList.remove('show');
+            });
+            dropdown.classList.toggle('show');
+        }
+
+        function closeLatexDropdown(btn) {
+            btn.closest('.latex-dropdown-content').classList.remove('show');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.latex-dropdown')) {
+                document.querySelectorAll('.latex-dropdown-content.show').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
+        });
+
+        function insertLatex(type) {
+            const templates = {
+                'inline': ['$', '$'],
+                'display': ['\\[', '\\]'],
+                'fraction': ['\\frac{', '}{denominator}'],
+                'sqrt': ['\\sqrt{', '}'],
+                'sum': ['\\sum_{i=1}^{n} ', ''],
+                'integral': ['\\int_{a}^{b} ', ' dx']
+            };
+
+            const [before, after] = templates[type] || ['$', '$'];
+
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString() || 'x';
+
+                // Insert the LaTeX with the selected text (or placeholder)
+                const textNode = document.createTextNode(before + selectedText + after);
+                range.deleteContents();
+                range.insertNode(textNode);
+
+                // Move cursor to end of inserted text
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // Trigger input event to update preview
+                const editor = selection.anchorNode.closest ? selection.anchorNode.closest('.wysiwyg-editor') : selection.anchorNode.parentElement.closest('.wysiwyg-editor');
+                if (editor) {
+                    onWysiwygInput(editor);
+                }
+            }
         }
 
         function insertCode() {
