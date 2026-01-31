@@ -1144,7 +1144,7 @@
                 xml += '  </multiplechoiceresponse>\n';
             } else if (problem.responseType === 'choiceresponse') {
                 xml += '  <choiceresponse>\n';
-                xml += `    <label>${escapeXml(problem.label)}</label>\n';
+                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
                 xml += '    <checkboxgroup>\n';
                 for (const choice of problem.choices) {
                     xml += `      <choice correct="${choice.correct}">${escapeXml(choice.text)}</choice>\n`;
