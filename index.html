@@ -867,6 +867,82 @@
             font-size: 0.8rem;
             margin-left: 8px;
         }
+
+        /* Link input popup */
+        .link-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            min-width: 350px;
+        }
+
+        .link-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .link-popup h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .link-popup .form-group {
+            margin-bottom: 12px;
+        }
+
+        .link-popup .form-group label {
+            font-size: 0.85rem;
+        }
+
+        .link-popup .form-group input {
+            font-size: 0.9rem;
+        }
+
+        .link-popup-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+
+        .link-popup-actions button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .link-popup-actions .btn-cancel {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+        }
+
+        .link-popup-actions .btn-insert {
+            background: #0079bf;
+            color: white;
+            border: none;
+        }
+
+        .link-popup-actions .btn-insert:hover {
+            background: #006ba1;
+        }
+
+        /* Link styling in editor */
+        .wysiwyg-editor a {
+            color: #0079bf;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -1297,6 +1373,7 @@
                         <div class="separator"></div>
                         <button type="button" onclick="execCmd('formatBlock', 'blockquote')" title="Quote">&#8220; Quote</button>
                         <button type="button" onclick="insertCode()" title="Code">&lt;/&gt;</button>
+                        <button type="button" onclick="showLinkPopup()" title="Insert Link">&#128279; Link</button>
                         <div class="separator"></div>
                         <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
                         <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
@@ -1337,6 +1414,10 @@
                         <button type="button" onclick="execCmd('bold')" title="Bold"><b>B</b></button>
                         <button type="button" onclick="execCmd('italic')" title="Italic"><i>I</i></button>
                         <button type="button" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
+                        <div class="separator"></div>
+                        <button type="button" onclick="execCmd('insertUnorderedList')" title="Bullet List">&#8226;</button>
+                        <button type="button" onclick="execCmd('insertOrderedList')" title="Numbered List">1.</button>
+                        <button type="button" onclick="showLinkPopup()" title="Insert Link">&#128279;</button>
                         <div class="separator"></div>
                         <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
                         <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
@@ -1473,6 +1554,115 @@
                 range.insertNode(code);
             }
         }
+
+        // Link popup state
+        let savedSelection = null;
+        let activeEditor = null;
+
+        function showLinkPopup() {
+            // Save current selection
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedSelection = selection.getRangeAt(0).cloneRange();
+                activeEditor = selection.anchorNode.closest ?
+                    selection.anchorNode.closest('.wysiwyg-editor') :
+                    selection.anchorNode.parentElement.closest('.wysiwyg-editor');
+            }
+
+            const selectedText = selection.toString() || '';
+
+            // Create popup HTML
+            const popupHtml = `
+                <div class="link-popup-overlay" onclick="closeLinkPopup()"></div>
+                <div class="link-popup" id="linkPopup">
+                    <h4>Insert Link</h4>
+                    <div class="form-group">
+                        <label>Link Text</label>
+                        <input type="text" id="linkText" value="${escapeHtml(selectedText)}" placeholder="Link text">
+                    </div>
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input type="text" id="linkUrl" placeholder="https://example.com">
+                    </div>
+                    <div class="link-popup-actions">
+                        <button class="btn-cancel" onclick="closeLinkPopup()">Cancel</button>
+                        <button class="btn-insert" onclick="insertLink()">Insert Link</button>
+                    </div>
+                </div>
+            `;
+
+            // Add popup to body
+            const container = document.createElement('div');
+            container.id = 'linkPopupContainer';
+            container.innerHTML = popupHtml;
+            document.body.appendChild(container);
+
+            // Focus URL input
+            setTimeout(() => {
+                document.getElementById('linkUrl').focus();
+            }, 100);
+        }
+
+        function closeLinkPopup() {
+            const container = document.getElementById('linkPopupContainer');
+            if (container) {
+                container.remove();
+            }
+            savedSelection = null;
+            activeEditor = null;
+        }
+
+        function insertLink() {
+            const linkText = document.getElementById('linkText').value || 'Link';
+            let linkUrl = document.getElementById('linkUrl').value;
+
+            if (!linkUrl) {
+                alert('Please enter a URL');
+                return;
+            }
+
+            // Add https if no protocol specified
+            if (!linkUrl.match(/^https?:\/\//i)) {
+                linkUrl = 'https://' + linkUrl;
+            }
+
+            // Create the link element
+            const link = document.createElement('a');
+            link.href = linkUrl;
+            link.textContent = linkText;
+            link.target = '_blank';
+
+            // Restore selection and insert link
+            if (savedSelection && activeEditor) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedSelection);
+
+                savedSelection.deleteContents();
+                savedSelection.insertNode(link);
+
+                // Move cursor after the link
+                savedSelection.setStartAfter(link);
+                savedSelection.setEndAfter(link);
+
+                // Trigger input event
+                if (activeEditor) {
+                    onWysiwygInput(activeEditor);
+                }
+            }
+
+            closeLinkPopup();
+        }
+
+        // Handle Enter key in link popup
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.getElementById('linkPopup')) {
+                e.preventDefault();
+                insertLink();
+            } else if (e.key === 'Escape' && document.getElementById('linkPopup')) {
+                closeLinkPopup();
+            }
+        });
 
         function saveWysiwygContent(problemIndex, field, editor) {
             const content = editor.innerHTML;
