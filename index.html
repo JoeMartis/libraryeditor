@@ -1296,11 +1296,14 @@
                 const editors = editMode.querySelectorAll('.wysiwyg-editor');
                 editors.forEach(editor => {
                     if (editor.dataset.dirty === 'true') {
-                        saveWysiwygContent(
-                            parseInt(editor.dataset.problem),
-                            editor.dataset.field,
-                            editor
-                        );
+                        const pIndex = parseInt(editor.dataset.problem);
+                        if (editor.dataset.field) {
+                            // Regular field editor (question, solution)
+                            saveWysiwygContent(pIndex, editor.dataset.field, editor);
+                        } else if (editor.dataset.choice !== undefined) {
+                            // Choice editor
+                            saveChoiceWysiwygContent(pIndex, parseInt(editor.dataset.choice), editor);
+                        }
                         editor.dataset.dirty = 'false';
                     }
                 });
@@ -1643,30 +1646,30 @@
 
             if (problem.responseType === 'multiplechoiceresponse') {
                 xml += '  <multiplechoiceresponse>\n';
-                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += `    <label>${prepareForExport(problem.label)}</label>\n`;
                 xml += '    <choicegroup type="MultipleChoice" shuffle="true">\n';
                 for (const choice of problem.choices) {
-                    xml += `      <choice correct="${choice.correct}">${escapeXml(choice.text)}</choice>\n`;
+                    xml += `      <choice correct="${choice.correct}">${prepareForExport(choice.text)}</choice>\n`;
                 }
                 xml += '    </choicegroup>\n';
                 xml += '  </multiplechoiceresponse>\n';
             } else if (problem.responseType === 'choiceresponse') {
                 xml += '  <choiceresponse>\n';
-                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += `    <label>${prepareForExport(problem.label)}</label>\n`;
                 xml += '    <checkboxgroup>\n';
                 for (const choice of problem.choices) {
-                    xml += `      <choice correct="${choice.correct}">${escapeXml(choice.text)}</choice>\n`;
+                    xml += `      <choice correct="${choice.correct}">${prepareForExport(choice.text)}</choice>\n`;
                 }
                 xml += '    </checkboxgroup>\n';
                 xml += '  </choiceresponse>\n';
             } else if (problem.responseType === 'stringresponse') {
                 xml += `  <stringresponse answer="${escapeXml(problem.answer || '')}" type="ci">\n`;
-                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += `    <label>${prepareForExport(problem.label)}</label>\n`;
                 xml += '    <textline size="40"/>\n';
                 xml += '  </stringresponse>\n';
             } else if (problem.responseType === 'numericalresponse') {
                 xml += `  <numericalresponse answer="${escapeXml(problem.answer || '')}">\n`;
-                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += `    <label>${prepareForExport(problem.label)}</label>\n`;
                 xml += `    <responseparam type="tolerance" default="${problem.tolerance || '0'}"/>\n`;
                 xml += '    <formulaequationinput/>\n';
                 xml += '  </numericalresponse>\n';
@@ -1676,7 +1679,7 @@
                 xml += '  <solution>\n';
                 xml += '    <div class="detailed-solution">\n';
                 xml += '      <p>Explanation</p>\n';
-                xml += `      <p>${escapeXml(problem.solution)}</p>\n`;
+                xml += `      <p>${prepareForExport(problem.solution)}</p>\n`;
                 xml += '    </div>\n';
                 xml += '  </solution>\n';
             }
@@ -1693,6 +1696,20 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&apos;');
+        }
+
+        function htmlToPlainText(html) {
+            if (!html) return '';
+            // Create a temporary element to parse HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            // Get text content (strips all HTML tags)
+            return temp.textContent || temp.innerText || '';
+        }
+
+        function prepareForExport(text) {
+            // Convert HTML to plain text, then escape for XML
+            return escapeXml(htmlToPlainText(text));
         }
 
         function resetEditor() {
