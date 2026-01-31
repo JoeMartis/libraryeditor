@@ -967,6 +967,8 @@
                 <button class="btn btn-primary" onclick="addNewProblem()">+ Add Problem</button>
                 <button class="btn btn-success" onclick="exportLibrary()">Export Library (.zip)</button>
                 <button class="btn btn-secondary" onclick="resetEditor()">Load Different Library</button>
+                <button class="btn btn-secondary" onclick="expandAllProblems()">Expand All</button>
+                <button class="btn btn-secondary" onclick="collapseAllProblems()">Collapse All</button>
             </div>
 
             <div class="card">
@@ -1790,6 +1792,18 @@
         function toggleProblem(index) {
             const body = document.getElementById(`problem-body-${index}`);
             body.classList.toggle('expanded');
+        }
+
+        function expandAllProblems() {
+            document.querySelectorAll('.problem-body').forEach(body => {
+                body.classList.add('expanded');
+            });
+        }
+
+        function collapseAllProblems() {
+            document.querySelectorAll('.problem-body').forEach(body => {
+                body.classList.remove('expanded');
+            });
         }
 
         function updateProblemField(index, field, value) {
