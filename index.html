@@ -718,6 +718,67 @@
             font-family: 'Times New Roman', serif;
             font-style: italic;
         }
+
+        /* Compact WYSIWYG for choices */
+        .choice-wysiwyg-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .choice-wysiwyg-item.correct {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .choice-wysiwyg-item > input[type="radio"],
+        .choice-wysiwyg-item > input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
+
+        .choice-wysiwyg-item .choice-editor-wrapper {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .choice-wysiwyg-item .wysiwyg-container {
+            border: 1px solid #e0e0e0;
+        }
+
+        .choice-wysiwyg-item .wysiwyg-toolbar {
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .choice-wysiwyg-item .wysiwyg-toolbar button {
+            padding: 4px 6px;
+            font-size: 0.75rem;
+            min-width: 24px;
+        }
+
+        .choice-wysiwyg-item .wysiwyg-toolbar .separator {
+            margin: 0 3px;
+        }
+
+        .choice-wysiwyg-item .wysiwyg-editor {
+            min-height: 40px;
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+
+        .choice-wysiwyg-item .btn-icon.delete {
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -1002,13 +1063,14 @@
                 choicesEditHtml = `
                     <div class="choices-list" id="choices-${index}">
                         ${problem.choices.map((choice, ci) => `
-                            <div class="choice-item ${choice.correct ? 'correct' : ''}" data-choice="${ci}">
+                            <div class="choice-wysiwyg-item ${choice.correct ? 'correct' : ''}" data-choice="${ci}">
                                 <input type="${isCheckbox ? 'checkbox' : 'radio'}"
                                        name="correct-${index}"
                                        ${choice.correct ? 'checked' : ''}
                                        onchange="updateChoiceCorrect(${index}, ${ci}, this.checked)">
-                                <input type="text" value="${escapeHtml(choice.text)}"
-                                       onchange="updateChoiceText(${index}, ${ci}, this.value)">
+                                <div class="choice-editor-wrapper">
+                                    ${createChoiceWysiwygEditor(index, ci, choice.text)}
+                                </div>
                                 <button class="btn-icon delete" onclick="deleteChoice(${index}, ${ci})" title="Delete choice">&#x2715;</button>
                             </div>
                         `).join('')}
@@ -1154,6 +1216,37 @@
                          oninput="markWysiwygDirty(this)">${content || ''}</div>
                 </div>
             `;
+        }
+
+        function createChoiceWysiwygEditor(problemIndex, choiceIndex, content) {
+            const editorId = `wysiwyg-${problemIndex}-choice-${choiceIndex}`;
+            return `
+                <div class="wysiwyg-container">
+                    <div class="wysiwyg-toolbar">
+                        <button type="button" onclick="execCmd('bold')" title="Bold"><b>B</b></button>
+                        <button type="button" onclick="execCmd('italic')" title="Italic"><i>I</i></button>
+                        <button type="button" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
+                        <div class="separator"></div>
+                        <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
+                        <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
+                        <div class="separator"></div>
+                        <button type="button" onclick="insertCode()" title="Code">&lt;/&gt;</button>
+                        <button type="button" onclick="execCmd('removeFormat')" title="Clear">Clear</button>
+                    </div>
+                    <div class="wysiwyg-editor"
+                         contenteditable="true"
+                         id="${editorId}"
+                         data-problem="${problemIndex}"
+                         data-choice="${choiceIndex}"
+                         onblur="saveChoiceWysiwygContent(${problemIndex}, ${choiceIndex}, this)"
+                         oninput="markWysiwygDirty(this)">${content || ''}</div>
+                </div>
+            `;
+        }
+
+        function saveChoiceWysiwygContent(problemIndex, choiceIndex, editor) {
+            const content = editor.innerHTML;
+            libraryData.problems[problemIndex].choices[choiceIndex].text = content;
         }
 
         function execCmd(command, value = null) {
