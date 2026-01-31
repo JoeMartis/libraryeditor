@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>edX Library v1 Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0079bf, #00c2e0);
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            border: 2px dashed #ccc;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #0079bf;
+            background: #f8fcff;
+        }
+
+        .upload-section.dragover {
+            border-color: #00c2e0;
+            background: #e8f7fa;
+        }
+
+        .upload-section input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #0079bf;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #006ba1;
+        }
+
+        .upload-section p {
+            margin-top: 15px;
+            color: #666;
+        }
+
+        .editor-section {
+            display: none;
+        }
+
+        .editor-section.visible {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #0079bf;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0079bf;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .problems-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .problem-card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .problem-header {
+            background: #e9ecef;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .problem-header:hover {
+            background: #dee2e6;
+        }
+
+        .problem-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .problem-number {
+            background: #0079bf;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        .problem-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 1.1rem;
+        }
+
+        .btn-icon:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        .btn-icon.delete:hover {
+            background: #fee;
+            color: #c00;
+        }
+
+        .problem-body {
+            padding: 15px;
+            display: none;
+        }
+
+        .problem-body.expanded {
+            display: block;
+        }
+
+        .choices-list {
+            margin-top: 10px;
+        }
+
+        .choice-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .choice-item.correct {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .choice-item input[type="radio"],
+        .choice-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .choice-item input[type="text"] {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 0.95rem;
+        }
+
+        .choice-item input[type="text"]:focus {
+            outline: none;
+        }
+
+        .add-choice-btn {
+            background: #f0f0f0;
+            border: 1px dashed #ccc;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .add-choice-btn:hover {
+            background: #e8f7fa;
+            border-color: #0079bf;
+            color: #0079bf;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #0079bf;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #006ba1;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .solution-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .solution-section label {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-bar {
+            background: #333;
+            color: #0f0;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: -1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: #f8f9fa;
+        }
+
+        .tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+
+        .tab-content {
+            border: 1px solid #ddd;
+            border-radius: 0 8px 8px 8px;
+            padding: 20px;
+            background: white;
+        }
+
+        .xml-editor {
+            width: 100%;
+            min-height: 400px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            resize: vertical;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #999;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .problem-card.dragging {
+            opacity: 0.5;
+            border: 2px dashed #0079bf;
+        }
+
+        .drop-indicator {
+            height: 4px;
+            background: #0079bf;
+            border-radius: 2px;
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar {
+                flex-direction: column;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .response-type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .response-type-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .response-type-btn:hover {
+            border-color: #0079bf;
+        }
+
+        .response-type-btn.active {
+            border-color: #0079bf;
+            background: #e8f7fa;
+            color: #0079bf;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>edX Library v1 Editor</h1>
+            <p>Upload, edit, and export edX content libraries</p>
+        </header>
+
+        <div class="status-bar" id="statusBar">Ready - Upload a library zip file to begin</div>
+
+        <div class="upload-section" id="uploadSection">
+            <input type="file" id="fileInput" accept=".zip">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose Library Zip File
+            </button>
+            <p>or drag and drop a .zip file here</p>
+        </div>
+
+        <div class="editor-section" id="editorSection">
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="addNewProblem()">+ Add Problem</button>
+                <button class="btn btn-success" onclick="exportLibrary()">Export Library (.zip)</button>
+                <button class="btn btn-secondary" onclick="resetEditor()">Load Different Library</button>
+            </div>
+
+            <div class="card">
+                <h2>Library Metadata</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Organization</label>
+                        <input type="text" id="libOrg" placeholder="e.g., MITxT">
+                    </div>
+                    <div class="form-group">
+                        <label>Library ID</label>
+                        <input type="text" id="libId" placeholder="e.g., UAI11_A01_P01_Q02">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" id="libDisplayName" placeholder="e.g., Module 14 - Assignment 1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Problems (<span id="problemCount">0</span>)</h2>
+                <div class="problems-list" id="problemsList">
+                    <!-- Problems will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding new problem -->
+    <div class="modal-overlay hidden" id="newProblemModal">
+        <div class="modal">
+            <h3>Add New Problem</h3>
+            <div class="form-group">
+                <label>Display Name</label>
+                <input type="text" id="newProblemName" placeholder="e.g., Question 1">
+            </div>
+            <div class="form-group">
+                <label>Max Attempts</label>
+                <input type="number" id="newProblemAttempts" value="2" min="1">
+            </div>
+            <div class="form-group">
+                <label>Response Type</label>
+                <div class="response-type-selector">
+                    <button class="response-type-btn active" data-type="multiplechoiceresponse">Multiple Choice</button>
+                    <button class="response-type-btn" data-type="choiceresponse">Checkboxes</button>
+                    <button class="response-type-btn" data-type="stringresponse">Text Input</button>
+                    <button class="response-type-btn" data-type="numericalresponse">Numerical</button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeNewProblemModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createNewProblem()">Create Problem</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let libraryData = {
+            org: '',
+            library: '',
+            displayName: '',
+            problems: []
+        };
+
+        let originalFolderName = '';
+
+        // Initialize drag and drop for upload
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.zip')) {
+                handleFileUpload(file);
+            } else {
+                setStatus('Error: Please upload a .zip file', true);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileUpload(file);
+            }
+        });
+
+        function setStatus(message, isError = false) {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.textContent = message;
+            statusBar.style.color = isError ? '#f00' : '#0f0';
+        }
+
+        async function handleFileUpload(file) {
+            setStatus(`Loading ${file.name}...`);
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const fileNames = Object.keys(zip.files);
+
+                // Find the root folder name
+                const rootFolder = fileNames[0].split('/')[0];
+                originalFolderName = rootFolder;
+
+                // Find and parse library.xml
+                const libraryXmlPath = `${rootFolder}/library.xml`;
+                const libraryXml = await zip.file(libraryXmlPath)?.async('string');
+
+                if (!libraryXml) {
+                    throw new Error('library.xml not found in the archive');
+                }
+
+                // Parse library.xml
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(libraryXml, 'text/xml');
+                const libraryElement = doc.querySelector('library');
+
+                libraryData.org = libraryElement.getAttribute('org') || '';
+                libraryData.library = libraryElement.getAttribute('library') || '';
+                libraryData.displayName = libraryElement.getAttribute('display_name') || '';
+                libraryData.problems = [];
+
+                // Get problem references
+                const problemRefs = doc.querySelectorAll('problem');
+
+                for (const ref of problemRefs) {
+                    const urlName = ref.getAttribute('url_name');
+                    const problemPath = `${rootFolder}/problem/${urlName}.xml`;
+                    const problemXml = await zip.file(problemPath)?.async('string');
+
+                    if (problemXml) {
+                        const problemDoc = parser.parseFromString(problemXml, 'text/xml');
+                        const problemElement = problemDoc.querySelector('problem');
+
+                        const problem = {
+                            urlName: urlName,
+                            displayName: problemElement.getAttribute('display_name') || 'Untitled',
+                            maxAttempts: problemElement.getAttribute('max_attempts') || '2',
+                            responseType: detectResponseType(problemDoc),
+                            label: '',
+                            choices: [],
+                            solution: '',
+                            rawXml: problemXml
+                        };
+
+                        // Extract question label
+                        const labelEl = problemDoc.querySelector('label');
+                        if (labelEl) {
+                            problem.label = labelEl.textContent.trim();
+                        }
+
+                        // Extract choices for multiple choice
+                        const choices = problemDoc.querySelectorAll('choice');
+                        for (const choice of choices) {
+                            problem.choices.push({
+                                text: choice.textContent.trim(),
+                                correct: choice.getAttribute('correct') === 'true'
+                            });
+                        }
+
+                        // Extract solution
+                        const solutionEl = problemDoc.querySelector('solution');
+                        if (solutionEl) {
+                            // Get the explanation text
+                            const explanationP = solutionEl.querySelectorAll('p');
+                            if (explanationP.length > 1) {
+                                problem.solution = explanationP[1].textContent.trim();
+                            } else if (explanationP.length === 1) {
+                                problem.solution = explanationP[0].textContent.trim();
+                            }
+                        }
+
+                        // For non-multiple-choice, extract answer
+                        if (problem.responseType === 'stringresponse') {
+                            const stringResponse = problemDoc.querySelector('stringresponse');
+                            if (stringResponse) {
+                                problem.answer = stringResponse.getAttribute('answer') || '';
+                            }
+                        } else if (problem.responseType === 'numericalresponse') {
+                            const numericalResponse = problemDoc.querySelector('numericalresponse');
+                            if (numericalResponse) {
+                                problem.answer = numericalResponse.getAttribute('answer') || '';
+                                const responseparam = numericalResponse.querySelector('responseparam');
+                                if (responseparam) {
+                                    problem.tolerance = responseparam.getAttribute('default') || '0';
+                                }
+                            }
+                        }
+
+                        libraryData.problems.push(problem);
+                    }
+                }
+
+                // Update UI
+                document.getElementById('libOrg').value = libraryData.org;
+                document.getElementById('libId').value = libraryData.library;
+                document.getElementById('libDisplayName').value = libraryData.displayName;
+
+                renderProblems();
+
+                document.getElementById('uploadSection').classList.add('hidden');
+                document.getElementById('editorSection').classList.add('visible');
+
+                setStatus(`Loaded: ${libraryData.problems.length} problems from ${file.name}`);
+
+            } catch (error) {
+                setStatus(`Error: ${error.message}`, true);
+                console.error(error);
+            }
+        }
+
+        function detectResponseType(doc) {
+            if (doc.querySelector('multiplechoiceresponse')) return 'multiplechoiceresponse';
+            if (doc.querySelector('choiceresponse')) return 'choiceresponse';
+            if (doc.querySelector('stringresponse')) return 'stringresponse';
+            if (doc.querySelector('numericalresponse')) return 'numericalresponse';
+            return 'multiplechoiceresponse';
+        }
+
+        function renderProblems() {
+            const container = document.getElementById('problemsList');
+            container.innerHTML = '';
+            document.getElementById('problemCount').textContent = libraryData.problems.length;
+
+            libraryData.problems.forEach((problem, index) => {
+                const card = createProblemCard(problem, index);
+                container.appendChild(card);
+            });
+
+            initDragAndDrop();
+        }
+
+        function createProblemCard(problem, index) {
+            const card = document.createElement('div');
+            card.className = 'problem-card';
+            card.dataset.index = index;
+            card.draggable = true;
+
+            const isMultipleChoice = problem.responseType === 'multiplechoiceresponse' || problem.responseType === 'choiceresponse';
+            const isCheckbox = problem.responseType === 'choiceresponse';
+
+            let choicesHtml = '';
+            if (isMultipleChoice) {
+                choicesHtml = `
+                    <div class="choices-list" id="choices-${index}">
+                        ${problem.choices.map((choice, ci) => `
+                            <div class="choice-item ${choice.correct ? 'correct' : ''}" data-choice="${ci}">
+                                <input type="${isCheckbox ? 'checkbox' : 'radio'}"
+                                       name="correct-${index}"
+                                       ${choice.correct ? 'checked' : ''}
+                                       onchange="updateChoiceCorrect(${index}, ${ci}, this.checked)">
+                                <input type="text" value="${escapeHtml(choice.text)}"
+                                       onchange="updateChoiceText(${index}, ${ci}, this.value)">
+                                <button class="btn-icon delete" onclick="deleteChoice(${index}, ${ci})" title="Delete choice">&#x2715;</button>
+                            </div>
+                        `).join('')}
+                        <div class="add-choice-btn" onclick="addChoice(${index})">+ Add Choice</div>
+                    </div>
+                `;
+            } else if (problem.responseType === 'stringresponse') {
+                choicesHtml = `
+                    <div class="form-group">
+                        <label>Correct Answer</label>
+                        <input type="text" value="${escapeHtml(problem.answer || '')}"
+                               onchange="updateProblemField(${index}, 'answer', this.value)">
+                    </div>
+                `;
+            } else if (problem.responseType === 'numericalresponse') {
+                choicesHtml = `
+                    <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+                        <div class="form-group">
+                            <label>Correct Answer</label>
+                            <input type="text" value="${escapeHtml(problem.answer || '')}"
+                                   onchange="updateProblemField(${index}, 'answer', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Tolerance</label>
+                            <input type="text" value="${escapeHtml(problem.tolerance || '0')}"
+                                   onchange="updateProblemField(${index}, 'tolerance', this.value)">
+                        </div>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="problem-header" onclick="toggleProblem(${index})">
+                    <div class="problem-title">
+                        <span class="drag-handle">&#x2630;</span>
+                        <span class="problem-number">${index + 1}</span>
+                        <span>${escapeHtml(problem.displayName)}</span>
+                        <small style="color: #888; font-weight: normal;">(${problem.responseType})</small>
+                    </div>
+                    <div class="problem-actions">
+                        <button class="btn-icon" onclick="event.stopPropagation(); moveProblem(${index}, -1)" title="Move up">&#x25B2;</button>
+                        <button class="btn-icon" onclick="event.stopPropagation(); moveProblem(${index}, 1)" title="Move down">&#x25BC;</button>
+                        <button class="btn-icon" onclick="event.stopPropagation(); duplicateProblem(${index})" title="Duplicate">&#x2398;</button>
+                        <button class="btn-icon delete" onclick="event.stopPropagation(); deleteProblem(${index})" title="Delete">&#x1F5D1;</button>
+                    </div>
+                </div>
+                <div class="problem-body" id="problem-body-${index}">
+                    <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+                        <div class="form-group">
+                            <label>Display Name</label>
+                            <input type="text" value="${escapeHtml(problem.displayName)}"
+                                   onchange="updateProblemField(${index}, 'displayName', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Attempts</label>
+                            <input type="number" value="${problem.maxAttempts}" min="1"
+                                   onchange="updateProblemField(${index}, 'maxAttempts', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Question</label>
+                        <textarea onchange="updateProblemField(${index}, 'label', this.value)">${escapeHtml(problem.label)}</textarea>
+                    </div>
+                    ${choicesHtml}
+                    <div class="solution-section">
+                        <div class="form-group">
+                            <label>Solution / Explanation</label>
+                            <textarea onchange="updateProblemField(${index}, 'solution', this.value)">${escapeHtml(problem.solution)}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleProblem(index) {
+            const body = document.getElementById(`problem-body-${index}`);
+            body.classList.toggle('expanded');
+        }
+
+        function updateProblemField(index, field, value) {
+            libraryData.problems[index][field] = value;
+            if (field === 'displayName') {
+                renderProblems();
+            }
+        }
+
+        function updateChoiceText(problemIndex, choiceIndex, text) {
+            libraryData.problems[problemIndex].choices[choiceIndex].text = text;
+        }
+
+        function updateChoiceCorrect(problemIndex, choiceIndex, isCorrect) {
+            const problem = libraryData.problems[problemIndex];
+
+            if (problem.responseType === 'multiplechoiceresponse') {
+                // Single choice - uncheck all others
+                problem.choices.forEach((c, i) => {
+                    c.correct = (i === choiceIndex);
+                });
+            } else {
+                // Multiple choice - just update this one
+                problem.choices[choiceIndex].correct = isCorrect;
+            }
+
+            renderProblems();
+            // Re-expand the problem
+            document.getElementById(`problem-body-${problemIndex}`).classList.add('expanded');
+        }
+
+        function addChoice(problemIndex) {
+            libraryData.problems[problemIndex].choices.push({
+                text: 'New choice',
+                correct: false
+            });
+            renderProblems();
+            document.getElementById(`problem-body-${problemIndex}`).classList.add('expanded');
+        }
+
+        function deleteChoice(problemIndex, choiceIndex) {
+            if (libraryData.problems[problemIndex].choices.length > 1) {
+                libraryData.problems[problemIndex].choices.splice(choiceIndex, 1);
+                renderProblems();
+                document.getElementById(`problem-body-${problemIndex}`).classList.add('expanded');
+            }
+        }
+
+        function moveProblem(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex >= 0 && newIndex < libraryData.problems.length) {
+                const temp = libraryData.problems[index];
+                libraryData.problems[index] = libraryData.problems[newIndex];
+                libraryData.problems[newIndex] = temp;
+                renderProblems();
+            }
+        }
+
+        function duplicateProblem(index) {
+            const original = libraryData.problems[index];
+            const copy = JSON.parse(JSON.stringify(original));
+            copy.urlName = 'problem_' + generateHash();
+            copy.displayName = copy.displayName + ' (copy)';
+            libraryData.problems.splice(index + 1, 0, copy);
+            renderProblems();
+        }
+
+        function deleteProblem(index) {
+            if (confirm('Are you sure you want to delete this problem?')) {
+                libraryData.problems.splice(index, 1);
+                renderProblems();
+            }
+        }
+
+        function generateHash() {
+            return [...Array(32)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+        }
+
+        // Drag and drop for reordering
+        function initDragAndDrop() {
+            const cards = document.querySelectorAll('.problem-card');
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', (e) => {
+                    card.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', card.dataset.index);
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                });
+
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = document.querySelector('.dragging');
+                    if (dragging !== card) {
+                        const container = document.getElementById('problemsList');
+                        const afterElement = getDragAfterElement(container, e.clientY);
+                        if (afterElement == null) {
+                            container.appendChild(dragging);
+                        } else {
+                            container.insertBefore(dragging, afterElement);
+                        }
+                    }
+                });
+
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                    const toIndex = parseInt(card.dataset.index);
+
+                    if (fromIndex !== toIndex) {
+                        const movedProblem = libraryData.problems.splice(fromIndex, 1)[0];
+                        libraryData.problems.splice(toIndex, 0, movedProblem);
+                        renderProblems();
+                    }
+                });
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.problem-card:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // New problem modal
+        let selectedResponseType = 'multiplechoiceresponse';
+
+        function addNewProblem() {
+            document.getElementById('newProblemModal').classList.remove('hidden');
+            document.getElementById('newProblemName').value = `Question ${libraryData.problems.length + 1}`;
+            selectedResponseType = 'multiplechoiceresponse';
+            updateResponseTypeButtons();
+        }
+
+        function closeNewProblemModal() {
+            document.getElementById('newProblemModal').classList.add('hidden');
+        }
+
+        document.querySelectorAll('.response-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedResponseType = btn.dataset.type;
+                updateResponseTypeButtons();
+            });
+        });
+
+        function updateResponseTypeButtons() {
+            document.querySelectorAll('.response-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === selectedResponseType);
+            });
+        }
+
+        function createNewProblem() {
+            const name = document.getElementById('newProblemName').value || `Question ${libraryData.problems.length + 1}`;
+            const attempts = document.getElementById('newProblemAttempts').value || '2';
+
+            const newProblem = {
+                urlName: 'problem_' + generateHash(),
+                displayName: name,
+                maxAttempts: attempts,
+                responseType: selectedResponseType,
+                label: 'Enter your question here',
+                choices: [],
+                solution: '',
+                answer: '',
+                tolerance: '0'
+            };
+
+            if (selectedResponseType === 'multiplechoiceresponse' || selectedResponseType === 'choiceresponse') {
+                newProblem.choices = [
+                    { text: 'Option A', correct: true },
+                    { text: 'Option B', correct: false },
+                    { text: 'Option C', correct: false },
+                    { text: 'Option D', correct: false }
+                ];
+            }
+
+            libraryData.problems.push(newProblem);
+            closeNewProblemModal();
+            renderProblems();
+
+            // Expand the new problem
+            const newIndex = libraryData.problems.length - 1;
+            setTimeout(() => {
+                document.getElementById(`problem-body-${newIndex}`).classList.add('expanded');
+            }, 100);
+        }
+
+        // Export functionality
+        async function exportLibrary() {
+            // Update library data from form
+            libraryData.org = document.getElementById('libOrg').value;
+            libraryData.library = document.getElementById('libId').value;
+            libraryData.displayName = document.getElementById('libDisplayName').value;
+
+            const folderName = libraryData.library || originalFolderName || 'library';
+
+            setStatus('Generating library zip...');
+
+            const zip = new JSZip();
+            const folder = zip.folder(folderName);
+            const problemFolder = folder.folder('problem');
+            const policiesFolder = folder.folder('policies');
+
+            // Generate library.xml
+            let libraryXml = `<library org="${escapeXml(libraryData.org)}" library="${escapeXml(libraryData.library)}" display_name="${escapeXml(libraryData.displayName)}">\n`;
+
+            for (const problem of libraryData.problems) {
+                libraryXml += `  <problem url_name="${escapeXml(problem.urlName)}"/>\n`;
+            }
+
+            libraryXml += '</library>\n';
+            folder.file('library.xml', libraryXml);
+
+            // Generate problem files
+            for (const problem of libraryData.problems) {
+                const problemXml = generateProblemXml(problem);
+                problemFolder.file(`${problem.urlName}.xml`, problemXml);
+            }
+
+            // Add assets.json
+            policiesFolder.file('assets.json', '{}');
+
+            // Generate and download zip
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${folderName}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            setStatus(`Exported: ${folderName}.zip (${libraryData.problems.length} problems)`);
+        }
+
+        function generateProblemXml(problem) {
+            let xml = `<problem url_name="${escapeXml(problem.urlName)}" display_name="${escapeXml(problem.displayName)}" max_attempts="${problem.maxAttempts}" markdown="null">\n`;
+
+            if (problem.responseType === 'multiplechoiceresponse') {
+                xml += '  <multiplechoiceresponse>\n';
+                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += '    <choicegroup type="MultipleChoice" shuffle="true">\n';
+                for (const choice of problem.choices) {
+                    xml += `      <choice correct="${choice.correct}">${escapeXml(choice.text)}</choice>\n`;
+                }
+                xml += '    </choicegroup>\n';
+                xml += '  </multiplechoiceresponse>\n';
+            } else if (problem.responseType === 'choiceresponse') {
+                xml += '  <choiceresponse>\n';
+                xml += `    <label>${escapeXml(problem.label)}</label>\n';
+                xml += '    <checkboxgroup>\n';
+                for (const choice of problem.choices) {
+                    xml += `      <choice correct="${choice.correct}">${escapeXml(choice.text)}</choice>\n`;
+                }
+                xml += '    </checkboxgroup>\n';
+                xml += '  </choiceresponse>\n';
+            } else if (problem.responseType === 'stringresponse') {
+                xml += `  <stringresponse answer="${escapeXml(problem.answer || '')}" type="ci">\n`;
+                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += '    <textline size="40"/>\n';
+                xml += '  </stringresponse>\n';
+            } else if (problem.responseType === 'numericalresponse') {
+                xml += `  <numericalresponse answer="${escapeXml(problem.answer || '')}">\n`;
+                xml += `    <label>${escapeXml(problem.label)}</label>\n`;
+                xml += `    <responseparam type="tolerance" default="${problem.tolerance || '0'}"/>\n`;
+                xml += '    <formulaequationinput/>\n';
+                xml += '  </numericalresponse>\n';
+            }
+
+            if (problem.solution) {
+                xml += '  <solution>\n';
+                xml += '    <div class="detailed-solution">\n';
+                xml += '      <p>Explanation</p>\n';
+                xml += `      <p>${escapeXml(problem.solution)}</p>\n`;
+                xml += '    </div>\n';
+                xml += '  </solution>\n';
+            }
+
+            xml += '</problem>\n';
+            return xml;
+        }
+
+        function escapeXml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function resetEditor() {
+            if (confirm('Are you sure you want to load a different library? Any unsaved changes will be lost.')) {
+                libraryData = {
+                    org: '',
+                    library: '',
+                    displayName: '',
+                    problems: []
+                };
+                originalFolderName = '';
+                document.getElementById('editorSection').classList.remove('visible');
+                document.getElementById('uploadSection').classList.remove('hidden');
+                document.getElementById('fileInput').value = '';
+                setStatus('Ready - Upload a library zip file to begin');
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('newProblemModal').addEventListener('click', (e) => {
+            if (e.target.id === 'newProblemModal') {
+                closeNewProblemModal();
+            }
+        });
+    </script>
+</body>
+</html>
