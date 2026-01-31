@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>edX Library v1 Editor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -1316,9 +1320,21 @@
                 previewQuestion.innerHTML = formatPreviewText(problem.label);
             }
 
-            // Update solution preview
+            // Update choices preview
             const previewMode = document.getElementById(`preview-mode-${problemIndex}`);
             if (previewMode) {
+                const choiceList = previewMode.querySelector('.choice-list');
+                if (choiceList && problem.choices) {
+                    const isCheckbox = problem.responseType === 'choiceresponse';
+                    choiceList.innerHTML = problem.choices.map((choice, ci) => `
+                        <li>
+                            <input type="${isCheckbox ? 'checkbox' : 'radio'}" name="preview-${problemIndex}" disabled>
+                            <span>${formatPreviewText(choice.text)}</span>
+                        </li>
+                    `).join('');
+                }
+
+                // Update solution preview
                 const solutionPreview = previewMode.querySelector('.solution-preview');
                 if (problem.solution && !solutionPreview) {
                     // Add solution preview if it doesn't exist
@@ -1332,6 +1348,27 @@
                 } else if (solutionPreview) {
                     solutionPreview.querySelector('div').innerHTML = formatPreviewText(problem.solution);
                 }
+
+                // Render LaTeX in the preview
+                renderLatex(previewMode);
+            }
+        }
+
+        function renderLatex(element) {
+            // Check if KaTeX auto-render is available
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(element, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '[mathjax]', right: '[/mathjax]', display: true},
+                        {left: '\\begin{equation}', right: '\\end{equation}', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true
+                });
             }
         }
 
