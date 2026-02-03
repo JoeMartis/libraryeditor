@@ -1555,6 +1555,18 @@
                 code.textContent = selectedText;
                 range.deleteContents();
                 range.insertNode(code);
+
+                // Move cursor to after the code element
+                range.setStartAfter(code);
+                range.setEndAfter(code);
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // Trigger input event to mark editor dirty and save content
+                const editor = code.closest('.wysiwyg-editor');
+                if (editor) {
+                    onWysiwygInput(editor);
+                }
             }
         }
 
