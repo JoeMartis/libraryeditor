@@ -1420,6 +1420,7 @@
                         <button type="button" onclick="execCmd('insertUnorderedList')" title="Bullet List">&#8226;</button>
                         <button type="button" onclick="execCmd('insertOrderedList')" title="Numbered List">1.</button>
                         <button type="button" onclick="showLinkPopup()" title="Insert Link">&#128279;</button>
+                        <button type="button" onclick="insertCode()" title="Code">&lt;/&gt;</button>
                         <div class="separator"></div>
                         <button type="button" onclick="execCmd('subscript')" title="Subscript">x&#8322;</button>
                         <button type="button" onclick="execCmd('superscript')" title="Superscript">x&#178;</button>
@@ -2117,8 +2118,21 @@
         }
 
         function prepareForExport(text) {
-            // Convert HTML to plain text, then escape for XML
-            return escapeXml(htmlToPlainText(text));
+            if (!text) return '';
+
+            // edX supports HTML in problem content, so we preserve formatting
+            // Clean up the HTML while keeping supported tags
+            let cleaned = text
+                // Remove any script tags for safety
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                // Remove contenteditable attributes
+                .replace(/\s*contenteditable="[^"]*"/gi, '')
+                // Clean up empty tags
+                .replace(/<(\w+)>\s*<\/\1>/g, '')
+                // Normalize whitespace in text
+                .replace(/&nbsp;/g, ' ');
+
+            return cleaned;
         }
 
         function resetEditor() {
